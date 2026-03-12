@@ -1,0 +1,18 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.backends._legacy:_Backend"
+
+[project]
+name = "gitquicktool"
+version = "0.1.0.0"
+description = "Cross-platform tool to quickly deploy repos and releases from GitHub with Supabase config sync"
+requires-python = ">=3.10"
+dependencies = [
+    "customtkinter>=5.2.0",
+    "requests>=2.31.0",
+    "supabase>=2.0.0",
+    "pycryptodome>=3.19.0",
+]
+
+[project.scripts]
+gitquicktool = "main:main"
