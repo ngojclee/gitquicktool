@@ -126,6 +126,42 @@ class SettingsTab:
             sec6, text=f"Machine ID: {self.app.config_data.get('machine_id', 'N/A')}",
             font=ctk.CTkFont(size=12), text_color="gray60",
         ).pack(anchor="w")
+        ctk.CTkLabel(
+            sec6, text=f"Version: {self.app.APP_VERSION}",
+            font=ctk.CTkFont(size=12), text_color="gray60",
+        ).pack(anchor="w", pady=(2, 0))
+
+        # ── App Update ───────────────────────────────────────
+        sec7 = self._section(scroll, "App Update")
+        update_row = ctk.CTkFrame(sec7, fg_color="transparent")
+        update_row.pack(fill="x", pady=2)
+
+        self.check_update_btn = ctk.CTkButton(
+            update_row, text="🔍  Check Update", width=150,
+            command=self._check_update,
+        )
+        self.check_update_btn.pack(side="left", padx=(0, 10))
+
+        self.force_update_btn = ctk.CTkButton(
+            update_row, text="⚡  Force Update", width=150,
+            fg_color="#8B4513", hover_color="#A0522D",
+            command=self._force_update,
+        )
+        self.force_update_btn.pack(side="left")
+
+        self.update_status = ctk.CTkLabel(
+            sec7, text="", font=ctk.CTkFont(size=12),
+        )
+        self.update_status.pack(anchor="w", pady=(6, 0))
+
+        # Download button (hidden until update found)
+        self.download_update_btn = ctk.CTkButton(
+            sec7, text="📥  Download & Install", width=200,
+            fg_color="#2d8659", hover_color="#236b47",
+            command=self._download_and_apply,
+        )
+        # Not packed yet — shown when update is available
+        self._pending_update = None
 
         # ── Load values ──────────────────────────────────────
         self._load_values()
@@ -274,6 +310,128 @@ class SettingsTab:
                     self.git_status.configure(text="✗ Install failed", text_color="#e74c3c")
                     if hasattr(self, 'mingit_btn'):
                         self.mingit_btn.configure(state="normal", text="📥  Retry")
+
+            self.parent.after(0, _done)
+
+        threading.Thread(target=_do, daemon=True).start()
+
+    # ── Update Methods ───────────────────────────────────────
+
+    def _check_update(self):
+        """Check for updates from GitHub releases."""
+        self._do_check_update(force=False)
+
+    def _force_update(self):
+        """Force download latest release."""
+        self._do_check_update(force=True)
+
+    def _do_check_update(self, force: bool = False):
+        """Check GitHub for a new version in the background."""
+        from core.updater import check_update
+
+        self.check_update_btn.configure(state="disabled")
+        self.force_update_btn.configure(state="disabled")
+        self.update_status.configure(
+            text="Checking GitHub releases...", text_color="gray50"
+        )
+
+        def _do():
+            result = check_update(
+                self.app.APP_VERSION, git_token=None, force=force
+            )
+
+            def _done():
+                self.check_update_btn.configure(state="normal")
+                self.force_update_btn.configure(state="normal")
+
+                if result["status"] == "update_available":
+                    self._pending_update = result
+                    tag = result.get("tag", "?")
+                    size_mb = result.get("size", 0) / 1024 / 1024
+                    self.update_status.configure(
+                        text=f"✓ New version {tag} available ({size_mb:.1f}MB)",
+                        text_color="#3498db",
+                    )
+                    self.download_update_btn.pack(anchor="w", pady=(6, 0))
+                    if force:
+                        # Force = auto download immediately
+                        self._download_and_apply()
+                elif result["status"] == "up_to_date":
+                    self.update_status.configure(
+                        text=f"✓ Already up to date (v{self.app.APP_VERSION})",
+                        text_color="#2ecc71",
+                    )
+                else:
+                    self.update_status.configure(
+                        text=f"✗ {result.get('message', 'Unknown error')}",
+                        text_color="#e74c3c",
+                    )
+
+            self.parent.after(0, _done)
+
+        threading.Thread(target=_do, daemon=True).start()
+
+    def _download_and_apply(self):
+        """Download the update and apply it (restart app)."""
+        from core.updater import download_update, apply_update, get_current_exe
+
+        if not self._pending_update:
+            return
+
+        info = self._pending_update
+        exe = get_current_exe()
+
+        if not exe:
+            self.update_status.configure(
+                text="✗ Updates only work in .exe mode",
+                text_color="#e74c3c",
+            )
+            return
+
+        new_exe = exe.parent / f"{exe.stem}_update{exe.suffix}"
+
+        self.download_update_btn.configure(state="disabled", text="Downloading...")
+        self.check_update_btn.configure(state="disabled")
+        self.force_update_btn.configure(state="disabled")
+
+        def _do():
+            def _progress(dl, total):
+                if total > 0:
+                    pct = int(dl / total * 100)
+                    mb = dl / 1024 / 1024
+                    self.parent.after(0, lambda: self.update_status.configure(
+                        text=f"Downloading... {pct}% ({mb:.1f}MB)",
+                        text_color="gray50",
+                    ))
+
+            # For public repo use browser_download_url
+            url = info.get("browser_url", info.get("download_url", ""))
+            ok = download_update(
+                url, new_exe,
+                git_token=None,
+                progress_fn=_progress,
+                expected_size=info.get("size"),
+            )
+
+            def _done():
+                if ok:
+                    self.update_status.configure(
+                        text="✓ Downloaded! Restarting...",
+                        text_color="#2ecc71",
+                    )
+                    self.app.set_status("Applying update...", "#f39c12")
+                    # Apply after short delay
+                    self.parent.after(1500, lambda: apply_update(exe, new_exe))
+                else:
+                    self.update_status.configure(
+                        text="✗ Download failed. Try again.",
+                        text_color="#e74c3c",
+                    )
+                    self.download_update_btn.configure(
+                        state="normal", text="📥  Retry Download"
+                    )
+                    self.check_update_btn.configure(state="normal")
+                    self.force_update_btn.configure(state="normal")
 
             self.parent.after(0, _done)
 

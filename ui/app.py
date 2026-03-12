@@ -3,6 +3,10 @@ ui/app.py — Main application window using customtkinter.
 Dark theme, tabbed interface: Dashboard | Settings.
 """
 
+import os
+import sys
+from pathlib import Path
+
 import customtkinter as ctk
 from ui.dashboard_tab import DashboardTab
 from ui.settings_tab import SettingsTab
@@ -13,7 +17,7 @@ class App(ctk.CTk):
     """Main application window."""
 
     APP_TITLE = "GitQuickTool"
-    APP_VERSION = "0.1.0"
+    APP_VERSION = "0.1.0.0"
     WINDOW_WIDTH = 960
     WINDOW_HEIGHT = 680
 
@@ -25,9 +29,21 @@ class App(ctk.CTk):
         self.geometry(f"{self.WINDOW_WIDTH}x{self.WINDOW_HEIGHT}")
         self.minsize(800, 550)
 
+        # Icon
+        icon_path = self._get_icon_path()
+        if icon_path:
+            self.iconbitmap(icon_path)
+
         # Theme
         ctk.set_appearance_mode("dark")
         ctk.set_default_color_theme("blue")
+
+        # Cleanup previous update files
+        try:
+            from core.updater import cleanup_update
+            cleanup_update()
+        except Exception:
+            pass
 
         # ── State ────────────────────────────────────────────
         self.config_data = load_config()
@@ -117,6 +133,18 @@ class App(ctk.CTk):
     def save_app_config(self):
         """Save current config to disk."""
         save_config(self.config_data)
+
+    def _get_icon_path(self) -> str | None:
+        """Find icon.ico — works for both dev and frozen (PyInstaller) mode."""
+        if getattr(sys, 'frozen', False):
+            base = Path(sys.executable).parent
+        else:
+            base = Path(__file__).parent.parent
+
+        ico = base / "assets" / "icon.ico"
+        if ico.exists():
+            return str(ico)
+        return None
 
     def _on_close(self):
         """Handle window close."""
