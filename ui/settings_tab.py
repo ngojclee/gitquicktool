@@ -98,10 +98,32 @@ class SettingsTab:
         self.sync_status = ctk.CTkLabel(sync_row, text="", font=ctk.CTkFont(size=12))
         self.sync_status.pack(side="left", padx=15)
 
+        # ── Git Status ────────────────────────────────────────
+        sec5 = self._section(scroll, "Git Status")
+        git_row = ctk.CTkFrame(sec5, fg_color="transparent")
+        git_row.pack(fill="x", pady=2)
+
+        from core.mingit import is_git_available, check_and_offer_mingit
+        git_ok, git_msg = check_and_offer_mingit()
+
+        self.git_status = ctk.CTkLabel(
+            git_row, text=f"{'✓' if git_ok else '✗'}  {git_msg}",
+            font=ctk.CTkFont(size=12),
+            text_color="#2ecc71" if git_ok else "#f39c12",
+        )
+        self.git_status.pack(side="left")
+
+        if not git_ok:
+            self.mingit_btn = ctk.CTkButton(
+                git_row, text="📥  Install MinGit", width=140,
+                command=self._install_mingit,
+            )
+            self.mingit_btn.pack(side="right")
+
         # ── Machine Info ─────────────────────────────────────
-        sec5 = self._section(scroll, "Machine Info")
+        sec6 = self._section(scroll, "Machine Info")
         ctk.CTkLabel(
-            sec5, text=f"Machine ID: {self.app.config_data.get('machine_id', 'N/A')}",
+            sec6, text=f"Machine ID: {self.app.config_data.get('machine_id', 'N/A')}",
             font=ctk.CTkFont(size=12), text_color="gray60",
         ).pack(anchor="w")
 
@@ -225,6 +247,37 @@ class SettingsTab:
             self.path_entry.delete(0, "end")
             self.path_entry.insert(0, folder)
             self.app.update_download_path(folder, source="settings")
+
+    def _install_mingit(self):
+        """Download and install MinGit in background."""
+        from core.mingit import download_mingit
+
+        if hasattr(self, 'mingit_btn'):
+            self.mingit_btn.configure(state="disabled", text="Installing...")
+        self.git_status.configure(text="Downloading MinGit...", text_color="gray50")
+
+        def _do():
+            def _progress(pct, msg):
+                self.parent.after(0, lambda: self.git_status.configure(
+                    text=f"[{pct}%] {msg}", text_color="gray50"
+                ))
+
+            ok = download_mingit(progress_callback=_progress)
+
+            def _done():
+                if ok:
+                    self.git_status.configure(text="✓ MinGit installed", text_color="#2ecc71")
+                    if hasattr(self, 'mingit_btn'):
+                        self.mingit_btn.pack_forget()
+                    self.app.set_status("MinGit installed successfully", "#2ecc71")
+                else:
+                    self.git_status.configure(text="✗ Install failed", text_color="#e74c3c")
+                    if hasattr(self, 'mingit_btn'):
+                        self.mingit_btn.configure(state="normal", text="📥  Retry")
+
+            self.parent.after(0, _done)
+
+        threading.Thread(target=_do, daemon=True).start()
 
     def _add_token(self):
         """Add a new GitHub token."""

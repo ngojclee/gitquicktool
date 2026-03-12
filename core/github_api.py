@@ -4,8 +4,6 @@ Handles repo cloning, release fetching, and asset downloading.
 """
 
 import fnmatch
-import os
-import re
 import shutil
 import subprocess
 from pathlib import Path
@@ -13,6 +11,8 @@ from typing import Optional, Callable
 from urllib.parse import urlparse
 
 import requests
+
+from core.mingit import get_git_executable
 
 
 def parse_repo_url(url: str) -> tuple[str, str]:
@@ -88,8 +88,9 @@ def clone_repo(
         # Already cloned — pull
         if progress_cb:
             progress_cb("Pulling latest changes...")
+        git_exe = get_git_executable()
         result = subprocess.run(
-            ["git", "pull", "--ff-only"],
+            [git_exe, "pull", "--ff-only"],
             cwd=str(dest),
             capture_output=True, text=True, timeout=120,
         )
@@ -102,8 +103,9 @@ def clone_repo(
     if progress_cb:
         progress_cb(f"Cloning to {dest.name}...")
 
+    git_exe = get_git_executable()
     result = subprocess.run(
-        ["git", "clone", "--depth", "1", auth_url, str(dest)],
+        [git_exe, "clone", "--depth", "1", auth_url, str(dest)],
         capture_output=True, text=True, timeout=300,
     )
     if progress_cb:
