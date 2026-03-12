@@ -13,13 +13,12 @@ CREATE TABLE IF NOT EXISTS "LuxeClaw_gitquicktool_tokens" (
     updated_at  TIMESTAMPTZ DEFAULT now()
 );
 
--- Enable RLS
 ALTER TABLE "LuxeClaw_gitquicktool_tokens" ENABLE ROW LEVEL SECURITY;
 
--- Allow full access with service key (anon key will use these policies)
-CREATE POLICY "Allow all for authenticated"
+CREATE POLICY "Full Access for Auth and Service"
     ON "LuxeClaw_gitquicktool_tokens"
     FOR ALL
+    TO authenticated, service_role
     USING (true)
     WITH CHECK (true);
 
@@ -40,12 +39,12 @@ CREATE TABLE IF NOT EXISTS "LuxeClaw_gitquicktool_items" (
     updated_at      TIMESTAMPTZ DEFAULT now()
 );
 
--- Enable RLS
 ALTER TABLE "LuxeClaw_gitquicktool_items" ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Allow all for authenticated"
+CREATE POLICY "Full Access for Auth and Service"
     ON "LuxeClaw_gitquicktool_items"
     FOR ALL
+    TO authenticated, service_role
     USING (true)
     WITH CHECK (true);
 
@@ -58,12 +57,12 @@ CREATE TABLE IF NOT EXISTS "LuxeClaw_gitquicktool_settings" (
     updated_at  TIMESTAMPTZ DEFAULT now()
 );
 
--- Enable RLS
 ALTER TABLE "LuxeClaw_gitquicktool_settings" ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Allow all for authenticated"
+CREATE POLICY "Full Access for Auth and Service"
     ON "LuxeClaw_gitquicktool_settings"
     FOR ALL
+    TO authenticated, service_role
     USING (true)
     WITH CHECK (true);
 
