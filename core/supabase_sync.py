@@ -9,9 +9,9 @@ from supabase import create_client, Client
 class SupabaseSync:
     """Manages sync between local state and Supabase."""
 
-    TABLE_ITEMS = "quicktool_items"
-    TABLE_TOKENS = "quicktool_tokens"
-    TABLE_SETTINGS = "quicktool_settings"
+    TABLE_ITEMS = "LuxeClaw_gitquicktool_items"
+    TABLE_TOKENS = "LuxeClaw_gitquicktool_tokens"
+    TABLE_SETTINGS = "LuxeClaw_gitquicktool_settings"
 
     def __init__(self, url: str, key: str):
         self.client: Client = create_client(url, key)

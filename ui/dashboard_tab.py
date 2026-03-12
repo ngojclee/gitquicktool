@@ -328,8 +328,7 @@ class DashboardTab:
         if folder:
             self.path_entry.delete(0, "end")
             self.path_entry.insert(0, folder)
-            self.app.config_data["download_path"] = folder
-            self.app.save_app_config()
+            self.app.update_download_path(folder, source="dashboard")
 
     def _add_new(self):
         """Dialog to add a new item."""

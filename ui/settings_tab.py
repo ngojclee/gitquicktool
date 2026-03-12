@@ -210,7 +210,7 @@ class SettingsTab:
         self.app.config_data["supabase_url"] = url
         self.app.config_data["supabase_token"] = key
         if path:
-            self.app.config_data["download_path"] = path
+            self.app.update_download_path(path, source="settings")
         self.app.config_data["first_run"] = False
         self.app.save_app_config()
 
@@ -224,8 +224,7 @@ class SettingsTab:
         if folder:
             self.path_entry.delete(0, "end")
             self.path_entry.insert(0, folder)
-            self.app.config_data["download_path"] = folder
-            self.app.save_app_config()
+            self.app.update_download_path(folder, source="settings")
 
     def _add_token(self):
         """Add a new GitHub token."""
@@ -298,15 +297,12 @@ class SettingsTab:
                 self.app.items = data.get("items", [])
                 self.app.tokens = data.get("tokens", [])
                 settings = data.get("settings", {})
-                if settings.get("download_path"):
-                    self.app.config_data["download_path"] = settings["download_path"]
 
                 def _update_ui():
                     self._refresh_token_list()
                     self.app.dashboard_tab.refresh_items()
                     if settings.get("download_path"):
-                        self.path_entry.delete(0, "end")
-                        self.path_entry.insert(0, settings["download_path"])
+                        self.app.update_download_path(settings["download_path"], source="")
                     self.sync_status.configure(text="✓ Synced from cloud", text_color="#2ecc71")
                     self.app.set_status(
                         f"Synced: {len(self.app.items)} items, {len(self.app.tokens)} tokens",

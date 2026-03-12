@@ -92,6 +92,28 @@ class App(ctk.CTk):
         """Update the status label in the top bar."""
         self.status_label.configure(text=text, text_color=color)
 
+    def update_download_path(self, new_path: str, source: str = ""):
+        """
+        Centralized download path update — keeps Dashboard and Settings in sync.
+        source: 'dashboard' or 'settings' to avoid infinite loop.
+        """
+        self.config_data["download_path"] = new_path
+        self.save_app_config()
+
+        # Sync the other tab's path entry
+        if source != "dashboard" and hasattr(self, 'dashboard_tab'):
+            try:
+                self.dashboard_tab.path_entry.delete(0, "end")
+                self.dashboard_tab.path_entry.insert(0, new_path)
+            except Exception:
+                pass
+        if source != "settings" and hasattr(self, 'settings_tab'):
+            try:
+                self.settings_tab.path_entry.delete(0, "end")
+                self.settings_tab.path_entry.insert(0, new_path)
+            except Exception:
+                pass
+
     def save_app_config(self):
         """Save current config to disk."""
         save_config(self.config_data)
